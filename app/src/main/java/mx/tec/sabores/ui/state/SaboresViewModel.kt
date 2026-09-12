@@ -39,7 +39,8 @@ class SaboresViewModel(
     var mias by mutableStateOf<List<MyReviewItem>>(emptyList())
         private set
 
-    init { cargarRestaurantes() }
+    init { cargarRestaurantes()
+        cargarMisResenas()}
 
 
     fun cargarRestaurantes() {
@@ -58,6 +59,34 @@ class SaboresViewModel(
         viewModelScope.launch {
             detalle = UiState.Cargando
             detalle = pedir { Detalle(repository.getById(id), repository.getReviews(id)) }
+        }
+    }
+    fun cargarMisResenas() {
+        viewModelScope.launch {
+            try {
+
+                val resenas = repository.getMyReviews()
+                val todos = repository.getAll()
+
+
+                mias = resenas.map { r ->
+                    val nombre = todos.find { it.id == r.restaurantId }?.name ?: "Restaurante"
+                    MyReviewItem(nombre, r)
+                }
+            } catch (e: Exception) {
+            }
+        }
+    }
+    fun borrarResena(id: Int) {
+        viewModelScope.launch {
+            try {
+                val exito = repository.deleteReview(id)
+                if (exito) {
+                    cargarMisResenas()
+                    cargarRestaurantes()
+                }
+            } catch (e: Exception) {
+            }
         }
     }
     private suspend fun <T> pedir(block: suspend () -> T): UiState<T> = try {

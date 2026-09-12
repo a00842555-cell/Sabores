@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import mx.tec.sabores.data.RestaurantRepository
+import mx.tec.sabores.domain.Review
 import mx.tec.sabores.domain.ReviewError
 import mx.tec.sabores.domain.ReviewValidator
 import retrofit2.HttpException
@@ -39,6 +40,13 @@ class NewReviewViewModel(
     var uiState by mutableStateOf(NewReviewUiState())
         private set
 
+    var reviewId: Int? = null
+
+    fun cargarDatos(review: Review) {
+        reviewId = review.id
+        uiState = uiState.copy(stars = review.stars, comment = review.comment)
+    }
+
     fun onStarsChange(stars: Int) {
         uiState = uiState.copy(stars = stars, errorAlGuardar = null)
     }
@@ -54,7 +62,11 @@ class NewReviewViewModel(
         viewModelScope.launch {
             uiState = uiState.copy(guardando = true, errorAlGuardar = null)
             try {
-                repository.addReview(restaurantId, uiState.stars, uiState.comment)
+                if (reviewId == null) {
+                    repository.addReview(restaurantId, uiState.stars, uiState.comment)
+                } else {
+                    repository.editReview(reviewId!!, uiState.stars, uiState.comment)
+                }
                 uiState = uiState.copy(guardando = false)
                 alTerminar()
             } catch (e: IOException) {

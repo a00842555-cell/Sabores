@@ -79,7 +79,12 @@ fun SaboresApp() {
             }
 
             composable(Route.MY_REVIEWS) {
-                MyReviewsScreen(items = viewModel.mias)
+                LaunchedEffect(Unit) {
+                    viewModel.cargarMisResenas()
+                }
+                MyReviewsScreen(items = viewModel.mias,
+                    onEdit = { review -> nav.navigate(Route.newReview(review.restaurantId)) },
+                    onDelete = { id -> viewModel.borrarResena(id) })
             }
 
             composable(
@@ -122,10 +127,17 @@ fun SaboresApp() {
             ) { entry ->
                 val id = entry.arguments?.getInt(Route.ARG_RESTAURANT_ID) ?: return@composable
 
-                val detalle = viewModel.detalle
-                val restaurant = if (detalle is UiState.Exito) detalle.datos.restaurant else return@composable
-
+                val restaurant = (viewModel.restaurantes as? UiState.Exito)?.datos
+                    ?.find { it.restaurant.id == id }?.restaurant
+                    ?: return@composable
                 val formViewModel: NewReviewViewModel = viewModel()
+
+                LaunchedEffect(id) {
+                    val reseñaExistente = viewModel.mias.find { it.review.restaurantId == id }?.review
+                    if (reseñaExistente != null) {
+                        formViewModel.cargarDatos(reseñaExistente)
+                    }
+                }
 
                 NewReviewScreen(
                     restaurant = restaurant,
@@ -133,9 +145,12 @@ fun SaboresApp() {
                     onStarsChange = formViewModel::onStarsChange,
                     onCommentChange = formViewModel::onCommentChange,
                     onSave = {
-                        // El popBackStack ya no es inmediato: ocurre cuando el servidor confirma.
-                        // Si falla, la pantalla se queda y el error se ve.
-                        formViewModel.publicar(id) { nav.popBackStack() }
+                        formViewModel.publicar(id) {
+                            viewModel.cargarRestaurantes()
+                            viewModel.cargarMisResenas()
+
+                            nav.popBackStack()
+                        }
                     },
                     onCancel = { nav.popBackStack() }
                 )
